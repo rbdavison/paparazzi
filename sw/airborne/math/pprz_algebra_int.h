@@ -75,7 +75,7 @@ struct Int32Vect3 {
 /* Rotation quaternions                         */
 #define INT32_QUAT_FRAC 15
 /**
- * @brief Roation quaternion
+ * @brief Rotation quaternion
  * @details Units: INT32_QUAT_FRAC */
 struct Int32Quat {
   int32_t qi;
@@ -83,6 +83,15 @@ struct Int32Quat {
   int32_t qy;
   int32_t qz;
 };
+
+
+struct Int64Quat {
+  int32_t qi;
+  int32_t qx;
+  int32_t qy;
+  int32_t qz;
+};
+
 
 /* Euler angles                                 */
 #define INT32_ANGLE_FRAC 12
@@ -154,6 +163,13 @@ struct Int32Rates {
   int32_t r; ///< in rad/s^2 with INT32_RATE_FRAC
 };
 
+struct Int64Rates {
+  int64_t p; ///< in rad/s^2 with INT32_RATE_FRAC
+  int64_t q; ///< in rad/s^2 with INT32_RATE_FRAC
+  int64_t r; ///< in rad/s^2 with INT32_RATE_FRAC
+};
+
+
 struct Int64Vect2 {
   int64_t x;
   int64_t y;
@@ -166,6 +182,7 @@ struct Int64Vect3 {
 };
 
 
+// Real (floating point) ->  Binary Fixed Point  (int)
 #define BFP_OF_REAL(_vr, _frac)    ((_vr)*(1<<(_frac)))
 #define FLOAT_OF_BFP(_vbfp, _frac) ((float)(_vbfp)/(1<<(_frac)))
 #define RATE_BFP_OF_REAL(_af)   BFP_OF_REAL((_af), INT32_RATE_FRAC)
@@ -253,6 +270,11 @@ struct Int64Vect3 {
     (_o).z = ((_i).z << (_l));		 \
   }
 
+#define INT32_VECT3_CROSS_PRODUCT(_vo, _v1, _v2) {			\
+    (_vo).x = (_v1).y*(_v2).z - (_v1).z*(_v2).y;			\
+    (_vo).y = (_v1).z*(_v2).x - (_v1).x*(_v2).z;			\
+    (_vo).z = (_v1).x*(_v2).y - (_v1).y*(_v2).x;			\
+  }
 
 
 
@@ -272,15 +294,15 @@ struct Int64Vect3 {
   }
 
 #define INT32_MAT33_DIAG(_m, _d00, _d11, _d22) {			\
-    MAT33_ELMT((_m), 0, 0) = (_d00);                        \
+    MAT33_ELMT((_m), 0, 0) = (_d00);					\
     MAT33_ELMT((_m), 0, 1) = 0;						\
     MAT33_ELMT((_m), 0, 2) = 0;						\
     MAT33_ELMT((_m), 1, 0) = 0;						\
-    MAT33_ELMT((_m), 1, 1) = (_d11);                \
+    MAT33_ELMT((_m), 1, 1) = (_d11);					\
     MAT33_ELMT((_m), 1, 2) = 0;						\
     MAT33_ELMT((_m), 2, 0) = 0;						\
     MAT33_ELMT((_m), 2, 1) = 0;						\
-    MAT33_ELMT((_m), 2, 2) = (_d22);                \
+    MAT33_ELMT((_m), 2, 2) = (_d22);					\
   }
 
 
@@ -507,9 +529,9 @@ struct Int64Vect3 {
 
 #define INT32_QUAT_ZERO(_q) {						\
     (_q).qi = QUAT1_BFP_OF_REAL(1);					\
-    (_q).qx = 0;								\
-    (_q).qy = 0;								\
-    (_q).qz = 0;								\
+    (_q).qx = 0;							\
+    (_q).qy = 0;							\
+    (_q).qz = 0;							\
   }
 
 #define INT32_QUAT_INVERT(_qo, _qi) QUAT_INVERT(_qo, _qi)
@@ -520,11 +542,11 @@ struct Int64Vect3 {
   }
 
 #define INT32_QUAT_WRAP_SHORTEST(q) {					\
-    if ((q).qi < 0)                                     \
+    if ((q).qi < 0)							\
       QUAT_EXPLEMENTARY(q,q);						\
   }
 
-#define INT32_QUAT_NORMALISE(q) {		                        \
+#define INT32_QUAT_NORMALIZE(q) {		                        \
     int32_t n;								\
     INT32_QUAT_NORM(n, q);						\
     (q).qi = (q).qi * QUAT1_BFP_OF_REAL(1) / n;				\
@@ -555,6 +577,22 @@ struct Int64Vect3 {
     (_b2c).qx = ((_a2b).qi*(_a2c).qx - (_a2b).qx*(_a2c).qi - (_a2b).qy*(_a2c).qz + (_a2b).qz*(_a2c).qy)>>INT32_QUAT_FRAC; \
     (_b2c).qy = ((_a2b).qi*(_a2c).qy + (_a2b).qx*(_a2c).qz - (_a2b).qy*(_a2c).qi - (_a2b).qz*(_a2c).qx)>>INT32_QUAT_FRAC; \
     (_b2c).qz = ((_a2b).qi*(_a2c).qz - (_a2b).qx*(_a2c).qy + (_a2b).qy*(_a2c).qx - (_a2b).qz*(_a2c).qi)>>INT32_QUAT_FRAC; \
+  }
+
+/* _a2c = _a2b comp _b2c , aka  _a2c = _a2b * _b2c */
+#define INT32_QUAT_COMP_NORM_SHORTEST(_a2c, _a2b, _b2c) {		\
+    INT32_QUAT_COMP(_a2c, _a2b, _b2c);					\
+    INT32_QUAT_WRAP_SHORTEST(_a2c);					\
+    INT32_QUAT_NORMALIZE(_a2c);						\
+  }
+
+
+/* _qd = -0.5*omega(_r) * _q  */
+#define INT32_QUAT_DERIVATIVE(_qd, _r, _q) {				\
+    (_qd).qi = (-1*( (_r).p*(_q).qx/2 + (_r).q*(_q).qy + (_r).r*(_q).qz))>>INT32_RATE_FRAC; \
+    (_qd).qx = (-1*(-(_r).p*(_q).qi/2 - (_r).r*(_q).qy + (_r).q*(_q).qz))>>INT32_RATE_FRAC; \
+    (_qd).qy = (-1*(-(_r).q*(_q).qi/2 + (_r).r*(_q).qx - (_r).p*(_q).qz))>>INT32_RATE_FRAC; \
+    (_qd).qz = (-1*(-(_r).r*(_q).qi/2 - (_r).q*(_q).qx + (_r).p*(_q).qy))>>INT32_RATE_FRAC; \
   }
 
 #ifdef ALGEBRA_INT_USE_SLOW_FUNCTIONS
@@ -637,6 +675,18 @@ struct Int64Vect3 {
     (_q).qz = INT_MULT_RSHIFT( c_phi2, c_th_s_ps, INT32_TRIG_FRAC + INT32_TRIG_FRAC - INT32_QUAT_FRAC) + \
               INT_MULT_RSHIFT(-s_phi2, s_th_c_ps, INT32_TRIG_FRAC + INT32_TRIG_FRAC - INT32_QUAT_FRAC);	 \
   }
+
+#define INT32_QUAT_OF_AXIS_ANGLE(_q, _uv, _an) {		\
+    int32_t san2;                            				\
+    PPRZ_ITRIG_SIN(san2, (_an/2));					\
+    int32_t can2;                            				\
+    PPRZ_ITRIG_COS(can2, (_an/2));					\
+    _q.qi = can2;					\
+    _q.qx = san2 * _uv.x;					\
+    _q.qy = san2 * _uv.y;					\
+    _q.qz = san2 * _uv.z;					\
+  }
+
 
 
 #define INT32_QUAT_OF_RMAT(_q, _r) {					\
@@ -793,7 +843,33 @@ struct Int64Vect3 {
 
 #define INT_RATES_ZERO(_e) RATES_ASSIGN(_e, 0, 0, 0)
 
-#define INT32_RATES_OF_EULERS_DOT_321(_r, _e, _ed) {				\
+#define INT_RATES_ADD_SCALED_VECT(_ro, _v, _s) {	\
+    _ro.p += _v.x * _s;					\
+    _ro.q += _v.y * _s;					\
+    _ro.r += _v.z * _s;					\
+  }
+
+#define INT_RATES_SDIV(_ro, _s, _ri) {			\
+    _ro.p = _ri.p / _s;					\
+    _ro.q = _ri.q / _s;					\
+    _ro.r = _ri.r / _s;					\
+  }
+
+#define INT_RATES_RSHIFT(_o, _i, _r) {	 \
+    (_o).p = ((_i).p >> (_r));		 \
+    (_o).q = ((_i).q >> (_r));		 \
+    (_o).r = ((_i).r >> (_r));		 \
+  }
+
+#define INT_RATES_LSHIFT(_o, _i, _r) {	 \
+    (_o).p = ((_i).p << (_r));		 \
+    (_o).q = ((_i).q << (_r));		 \
+    (_o).r = ((_i).r << (_r));		 \
+  }
+
+
+
+#define INT32_RATES_OF_EULERS_DOT_321(_r, _e, _ed) {			\
 									\
     int32_t sphi;							\
     PPRZ_ITRIG_SIN(sphi, (_e).phi);					\
