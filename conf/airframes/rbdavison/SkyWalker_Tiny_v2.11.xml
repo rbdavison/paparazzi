@@ -1,4 +1,4 @@
-<!DOCTYPE airframe SYSTEM "airframe.dtd">
+<!DOCTYPE airframe SYSTEM "../airframe.dtd">
 
 <!-- SkyKalker (http://www.fpvflying.com/products/Skywalker-platform-for-UAV-FPV.html)
      Tiny board (http://paparazzi.enac.fr/wiki/LisaL)
@@ -151,7 +151,7 @@
 	
 	<define name="AUTO_PITCH_PGAIN" value="-0.1"/>
     <define name="AUTO_PITCH_IGAIN" value="0.01"/>
-    <define name="AUTO_PITCH_MAX_PITCH" value="RadOfDeg(20)"/>
+    <define name="AUTO_PITCH_MAX_PITCH" value="RadOfDeg(30)"/>
     <define name="AUTO_PITCH_MIN_PITCH" value="RadOfDeg(-15)"/>
 
   </section>
